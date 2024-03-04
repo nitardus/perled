@@ -1,22 +1,21 @@
 #! /usr/bin/perl
-use v5.14; use strict; use warnings;
-our $z = 22;
+use v5.14; use strict; use warnings; use utf8;
+our $z = 22; # Set screen size without Term::ReadKey
 
 our (@b, @u, @x, $p, $mod);
-our $pos = 0; our $regex  = '';
+our $pos = 0; our $regex  = ''; my $pn = '';
 our $ADR = qr#\d+|\$|\.|'[A-z]|([/?]).*?(?:\1I?|$)#;
 our $OFS = qr#(?:[+-]\d*)+#;
 our $GLB = qr#([GgVv])([/?])(.*?)($|\2I?)#;
-our $CMD = qr#(?:[Dupnlzkiasdtxyjs=!Pefl]|w?[qQ]|[rw]!?|)#x;
+our $CMD = qr#[acdefijknpqQstuxXyz=!]|l[DOX]?|w?[qQ]|[rw]!?#x;
 our $ERR_SFX = "Invalid command suffix\n";
 our $ERR_RE  = "Invalid regular expression\n";
 our $ERR_DLM = "Missing pattern delimiter\n";
 our $ERR_ADR = "Invalid adress!\n";
 our $ERR_FLN = "No current filename!\n";
 our $ERR_FND = "No match!\n";
-sub raw    { open S, '<:raw', \$_[0]; undef local $/; my $s = <S>; my $r = '';
-	     $r .= /[ -~]/a ? $_ : sprintf( "\\%03o", ord ) for split '', $s;
-	     $r .= '$';}
+our $O = "\\%03o"; our $X = ":%02X"; our $D = "(%d)";
+sub raw    { my $r; $r .= /[ -~]/a ? $_ : sprintf( $_[1], ord ) for split '', $_[0]; $r.='$' }
 sub save   { @u = @b; $mod = 1; }
 sub dsave  { save; $u[$_] = { %{ $b[$_] } } for @_ }
 sub undo   { @_ = @b; @b = @u; @u = @_; $pos = $#b if $pos > $#b }
@@ -59,19 +58,19 @@ sub gsubst { my ($re, $rpl, @i) = @_; dsave @i; my %m;
 sub size   { use bytes; return length $_[0] }
 sub name   { my $f = shift; return ($f =~ s/^\s+(?=\S)//) ? $f : $b[0] }
 sub load   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "-|" : "<"; my $s = 0;
-	     if( open my $h, $m, $f ){ $s+=size($_) and chomp and push @_, {_=>$_} while (<$h>);
-				       say $s; close $h; return @_ }
-	     die "Cannot open $f for read: $!" }
+	     if (open my $h,$m,$f) { $s+=size($_) and chomp and push @_, {_=>$_} while <$h>;
+					  say $s; close $h; return @_ }
+	     die "$f: $!\n" }
 sub wrt   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
-	     if ( open my $h, $m, $f ) { my $out = join '', map { $b[$_]{_}."\n" } @_; $mod = 0;
+	     if (open my $h,$m,$f) { my $out = join '', map { $b[$_]{_}."\n" } @_; $mod = 0;
 					  print { $h } $out; say size $out; close $h; return }
-	     die "Cannot open $f for write: $!" }
+	     die "Cannot open $f for write: $!\n" }
 sub edit   { @b = ($_[0]); push @b, load $b[0]; $pos = $#b }
 
-while ($_ = shift) { if (s/^-//) { $p = /^p/ ? '*' : /^P(.)$/ ? $1 : '' }
-		     elsif (!@b) { eval { edit $_ }; print STDERR $@ if $@ } }
+while ($_ = shift) { if (s/^-//) { $p   = /^p/ ? '*' : /^P(.)$/ ? $1 : ''; /n$/ and $pn = 0 }
+		     elsif (!@b) { eval { edit $_ } or print STDERR $@ } }
 unless (@b)        { @b = ('', { _ => '' }) and $pos = $#b }
-@u = @b; print $p = $p // '';
+@u = @b; $p = $p // ''; $pn = $pos unless $pn eq ''; print "$pn$p";
 
 while ( defined ($_ = <STDIN>) ) {
   chomp;
@@ -100,7 +99,7 @@ while ( defined ($_ = <STDIN>) ) {
     @i = filt $glob, ($no_adr ? ($pos+1..$#b,1..$pos) : @i) if $glob;
     $pos = $i[-1];
 
-    save if $cmd =~ /[edxtkr]/;
+    save if $cmd =~ /[aicedxtkr]/;
     if    ($cmd =~ /k/) { die $ERR_ADR if $#i || !$i[0];
 			  die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//;
 			  setk $i[0], $1; }
@@ -117,17 +116,19 @@ while ( defined ($_ = <STDIN>) ) {
     elsif ($cmd =~ /r/)  { my $f = name $sfx or die $ERR_FLN; insert load $f }
     elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; wrt $f, ($no_adr ? 1..$#b : @i) }
     if    ($cmd =~ /q/)  { if ($mod) {$mod = 0; die "Warning: buffer modifed\n" } else { exit }  }
-    $sfx =~ s/([pnl])$// and $cmd .= $1;
-    if ($cmd =~ /[eEf]/ and not $no_adr )      { die "Unexpected adress\n" }
-    if ($cmd =~ /[idynps]/ and grep /^0$/, @i) { die $ERR_ADR }
-    if ($cmd =~ /[u=iadyxpnj]/ and $sfx)        { die $ERR_SFX }
+    $sfx =~ s/([pn]|l[xod]?)$// and $cmd .= $1;
+    if ($cmd =~ /[eEf]/ and not $no_adr )         { die "Unexpected adress\n" }
+    if ($cmd =~ /[cdynps]|^$/ and grep /^0$/, @i)  { die $ERR_ADR }
+    if ($cmd =~ /[u=iadyxpnlj]/ and $sfx)          { die $ERR_SFX }
     if ($cmd =~ /[t]/) { die $ERR_SFX unless $sfx && $sfx =~ /^($ADR?)($OFS?)?$/;
 			 $sfx  = $1 ne '' ? getl $1 : $pos;
 			 $sfx += $3 ne '' ? sum $3 : 0;
 			 die $ERR_ADR unless valid $sfx }
     if ($cmd =~ /u/) { undo }
+    elsif ($cmd =~ /X/) { eval "$sfx;" }
     elsif ($cmd =~ /a/) { my @t = gettxt; insert @t if @t }
-    elsif ($cmd =~ /i/) { my @t = gettxt; $pos-- && insert @t if @t }
+    elsif ($cmd =~ /i/) { my @t = gettxt; do { --$pos if $pos>0; insert @t } if @t }
+    elsif ($cmd =~ /c/) { my @t = gettxt; do { del @i; insert @t } if @t }
     elsif ($cmd =~ /d/) { del @i }
     elsif ($cmd =~ /y/) { @x = copy @b[@i] }
     elsif ($cmd =~ /x/) { insert @x }
@@ -138,10 +139,10 @@ while ( defined ($_ = <STDIN>) ) {
     elsif ($cmd =~ /=/) { say $pos }
     if ($cmd =~ /p/) { say $b[$_]{_} for @i }
     elsif ($cmd =~ /n/) { say "$_\t", $b[$_]{_} for @i }
-    elsif ($cmd =~ /l/) { say raw $b[$_]{_}, '$' for @i }
     elsif ($cmd =~ /z/) { $sfx =~ /\D/ and die $ERR_SFX; $z = $sfx||$z||22; $beg += $end;
 			  die $ERR_ADR if $beg>$#b; $end = $beg+$z; $end = $end<$#b ? $end : $#b;
 			  say $b[$_]{_} for $beg..$end; $pos = $end }
+    elsif ($cmd =~ /l([DOX]?)/) { say raw $b[$_]{_}, ($1 eq 'X'? $X : $1 eq 'D'? $D : $O) for @i }
     elsif (!$cmd) {$sfx && die "Unknown command\n"; say $b[$_]{_} for @i; $pos==$#b or $pos++}
-  };  print STDERR "? $@" if $@; print $p;
+  };  print STDERR "? $@" if $@; $pn = $pos unless $pn eq ''; print "$pn$p";
 }

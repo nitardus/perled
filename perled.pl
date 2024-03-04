@@ -48,7 +48,6 @@ sub copy   { my @c; push @c, { _ => $_->{_} } for @_; @c }
 sub del    { @x = copy @b[@_]; @b = @b[invert @_]; $pos -= $pos<$#b ? $#_ : @_ }
 sub insrt  { my $i = pop; @b = $i<$#b ? (@b[0..$i],@_,@b[$i+1..$#b]) : (@b,@_) }
 sub insert { insrt @_, $pos; $pos += @_ }
-sub joinl  {   }
 sub splt   { my $i = shift; @_ = split "\n", $b[$i]{_}; return 1 unless $#_;
 	     $b[$i]{_} = shift; @_ = map { _ => $_ }, @_; insrt @_, $i}
 sub nsubst { my ($re, $rpl, $cnt, @i) = @_; dsave @i;

@@ -1,4 +1,4 @@
-#! perl
+#! /usr/bin/perl
 use v5.14; use strict; use warnings;
 our $z = 22;
 
@@ -42,7 +42,7 @@ sub filt   { local $_ = shift; /^$GLB/ or die $ERR_RE;
 	     my ($cmd,$dlm,$re) = ($1,$2,$3); $re = re $re;
 	     @_ = grep { $b[$_]{_} =~ /$re/ } $dlm eq '?' ? reverse @_ : @_;
 	     @_ = $cmd=~/v/i ? invert @_ :  @_ or die $ERR_FND; @_ }
-sub gettxt { push @_, $_ while defined ( $_ = <STDIN> ) and chomp and not /^\.$/;
+sub gettxt { push @_, $_ while defined ($_ = <STDIN>) and chomp and not /^\.$/;
 	     map { _ => $_ }, @_ }
 sub copy   { my @c; push @c, { _ => $_->{_} } for @_; @c }
 sub del    { @x = copy @b[@_]; @b = @b[invert @_]; $pos -= $pos<$#b ? $#_ : @_ }
@@ -62,7 +62,7 @@ sub load   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "-|" : "<"; my $s = 0;
 	     if( open my $h, $m, $f ){ $s+=size($_) and chomp and push @_, {_=>$_} while (<$h>);
 				       say $s; close $h; return @_ }
 	     die "Cannot open $f for read: $!" }
-sub writ   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
+sub wrt   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
 	     if ( open my $h, $m, $f ) { my $out = join '', map { $b[$_]{_}."\n" } @_; $mod = 0;
 					  print { $h } $out; say size $out; close $h; return }
 	     die "Cannot open $f for write: $!" }
@@ -73,7 +73,7 @@ while ($_ = shift) { if (s/^-//) { $p = /^p/ ? '*' : /^P(.)$/ ? $1 : '' }
 unless (@b)        { @b = ('', { _ => '' }) and $pos = $#b }
 @u = @b; print $p = $p // '';
 
-while (defined ($_ = <STDIN>) ) {
+while ( defined ($_ = <STDIN>) ) {
   chomp;
   eval {
     my $beg  = s#^$ADR##         ? $& : undef;
@@ -83,8 +83,8 @@ while (defined ($_ = <STDIN>) ) {
     my $e_of = s#^(?:[+-]\d*)+## ? sum $& : 0;
     my $glob = s#^$GLB##         ? $& : undef;
     my $cmd  = s#^$CMD##         ? $& : '';
-    my $sfx  = $_;
-    $sfx .= $_ while $sfx =~ s/\\$/\n/ && chomp( $_ = <STDIN> );
+    my $sfx  = $_; exit if $cmd eq 'Q';
+    $sfx .= $_ while $sfx =~ s/\\$/\n/ && defined ($_ = <STDIN>) && chomp;
 
     my $no_adr = 1 unless defined $beg or $b_of or defined $end or $e_of;
     $beg = getl $beg; $end = getl $end;
@@ -100,7 +100,6 @@ while (defined ($_ = <STDIN>) ) {
     @i = filt $glob, ($no_adr ? ($pos+1..$#b,1..$pos) : @i) if $glob;
     $pos = $i[-1];
 
-    $cmd = $cmd || 'p';
     save if $cmd =~ /[edxtkr]/;
     if    ($cmd =~ /k/) { die $ERR_ADR if $#i || !$i[0];
 			  die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//;
@@ -112,16 +111,16 @@ while (defined ($_ = <STDIN>) ) {
       if    ($flg =~ /g/ && $flg =~ /\d/) { die $ERR_SFX }
       elsif ($flg =~ /g/)                 { gsubst $re, $rpl, @i }
       else                                { nsubst $re, $rpl, $flg || 1, @i } }
+    if ($cmd =~ /[frw]/ and $sfx and not $sfx =~ /^\s+/) { die $ERR_SFX }
     elsif ($cmd =~ /!$/) { system $sfx; say '!' }
     elsif ($cmd =~ /f/)  { say $b[0] = name $sfx; }
     elsif ($cmd =~ /r/)  { my $f = name $sfx or die $ERR_FLN; insert load $f }
-    elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; writ $f, ($no_adr ? 1..$#b : @i) }
+    elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; wrt $f, ($no_adr ? 1..$#b : @i) }
     if    ($cmd =~ /q/)  { if ($mod) {$mod = 0; die "Warning: buffer modifed\n" } else { exit }  }
-    if    ($cmd =~ /Q/)  { exit }
     $sfx =~ s/([pnl])$// and $cmd .= $1;
-    if ($cmd =~ /[eEf]/ and not $no_adr )      { die "Unexpected adress" }
+    if ($cmd =~ /[eEf]/ and not $no_adr )      { die "Unexpected adress\n" }
     if ($cmd =~ /[idynps]/ and grep /^0$/, @i) { die $ERR_ADR }
-    if ($cmd =~ /[u=iadyxpn]/ and $sfx)        { die $ERR_SFX }
+    if ($cmd =~ /[u=iadyxpnj]/ and $sfx)        { die $ERR_SFX }
     if ($cmd =~ /[t]/) { die $ERR_SFX unless $sfx && $sfx =~ /^($ADR?)($OFS?)?$/;
 			 $sfx  = $1 ne '' ? getl $1 : $pos;
 			 $sfx += $3 ne '' ? sum $3 : 0;
@@ -143,5 +142,6 @@ while (defined ($_ = <STDIN>) ) {
     elsif ($cmd =~ /z/) { $sfx =~ /\D/ and die $ERR_SFX; $z = $sfx||$z||22; $beg += $end;
 			  die $ERR_ADR if $beg>$#b; $end = $beg+$z; $end = $end<$#b ? $end : $#b;
 			  say $b[$_]{_} for $beg..$end; $pos = $end }
-  }; print "? $@" if $@; print $p;
+    elsif (!$cmd) {$sfx && die "Unknown command\n"; say $b[$_]{_} for @i; $pos==$#b or $pos++}
+  };  print STDERR "? $@" if $@; print $p;
 }

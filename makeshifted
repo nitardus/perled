@@ -1,0 +1,50 @@
+#! /usr/bin/perl
+use v5.10; use strict; use warnings; use utf8;
+our @b = ( $ARGV[0] || '' ); our (@u, @x, $re);
+if ( grep -f, @ARGV ) { chomp and push @b, $_ while <> }
+@u = @b;
+
+sub u { my @c = @b; @b = @u; @u = @c  }
+sub e {
+  my $f = pop || $b[0] || die "Missing filename!\n";
+  @u=@b; @b = ( $f ); open F, '<', $f or die $!;
+  while (<F>) {chomp; push @b, $_ }
+  close F; say -s $f;
+}
+sub w {
+  my $f = pop || $b[0]; open F, '>', $f or die $!;
+  say F $b[$_] for 1..$#b; close F;  say -s $f;
+}
+sub d {
+  my $beg = shift; my $end = shift || $beg;
+  @u=@b; @x = @b[$beg..$end];
+  @b = ($end<$#b) ? ( @b[0..$beg-1],@b[$end+1..$#b] ) : @b[0..$beg-1];
+}
+sub put { my $i = shift; @b = $i<$#b ? (@b[0..$i], @_, @b[$i+1..$#b]) : (@b, @_) }
+sub a {
+  my $i = shift; my @ins; @u=@b;
+  push @ins, $_ while defined ($_ = <STDIN>) and chomp and $_ ne '.';
+  put $i, @ins;
+}
+sub subst {
+  @u=@b; my $i = shift; $re = pop || $re; eval "\$b[$i] =~ s$re";
+  if ($b[$i] =~ "\n") { my @y = split "\n", $b[$i];
+			@b =(@b[0..$i-1], @y, @b[$i+1..$#b]);  }
+}
+sub range {
+  my $beg = shift || 0; my $end = shift || $beg || $#b;
+  $beg = $beg || 1; return $beg..$end
+}
+sub p { say for @b[range @_] }
+sub n { say "$_\t$b[$_]" for range @_ }
+sub j { my @i = range @_; @x=@b[@i]; my $j = join "",@x; d @i; put $i[0], $j }
+sub g { my $re = pop; grep   $b[$_] =~ /$_[0]/, range @_ }
+sub v { my $re = pop; grep ! $b[$_] =~ /$_[0]/, range @_ }
+
+print STDERR ':';
+while (<STDIN>) {
+  chomp; s/^([ew]) (.*)/$1 "$2"/;
+  s/^(\d+),?(\d*)([lwdaspnj])(.*)/$3 $1, $2, "$4"/;
+  s#^g/(.*?)/(.*)#$2 \$_ for g '$1'#; s/^s/subst/; s/^q/exit/;
+  eval; print STDERR $@, ':';
+}

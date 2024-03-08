@@ -7,7 +7,7 @@ our (@b, @u, @x, $p, $P, $mod); our $pos = 0; our $regex  = ''; our $pn = '';
 our $ADR = qr#\d+|\$|\.|'[A-z]|([/?]).*?(?:\1I?|$)#;
 our $OFS = qr#(?:[+-]\d*)+#;
 our $GLB = qr#([GgVv])([/?])(.*?)($|\2I?)#;
-our $CMD = qr#[acdefijknpqQstuxXyz=!]|PN?|N|l[DOX]?|w?[qQ]|[rw]!?#x;
+our $CMD = qr#[acdefijkmnpqQstuxXyz=!]|PN?|N|l[DOX]?|w?[qQ]|[rw]!?#x;
 our $ERR_SFX = "Invalid command suffix\n";
 our $ERR_ADR = "Invalid adress!\n";
 our $ERR_FLN = "No current filename!\n";
@@ -92,16 +92,14 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
     $end  = ($dlm) ? $#b  : $beg unless defined $end or $e_of;
     $end  = $pos unless defined $end;
     $end += $e_of;
-    0 <= $beg <= $end <= $#b or die $ERR_ADR;
-    my @i = $beg..$end;
+    0 <= $beg <= $end <= $#b or die $ERR_ADR; my @i = $beg..$end;
 
-    @i = filt $glob, ($no_adr ? ($pos+1..$#b,1..$pos) : @i) if $glob;
-    $pos = $i[-1];
+    @i = filt $glob, ($no_adr ? ($pos+1..$#b,1..$pos) : @i) if $glob; $pos = $i[-1];
 
-    save if $cmd =~ /[aicedxtkr]/;
-    if    ($cmd =~ /k/) { die $ERR_ADR if $#i || !$i[0];
-			  die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//;
-			  setk $i[0], $1; }
+    save if $cmd =~ /[aicedkmrtx]/;
+    if ($cmd =~ /k/) { die $ERR_ADR if $#i || !$i[0];
+		       die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//;
+		       setk $i[0], $1 }
     elsif ($cmd =~ /s/) {
       $sfx =~ s#(\S)(.*?)\1(.*?)(?:\z|\1([Ig\d]*)(?=[nlp]?\z))##s or die $ERR_SFX;
       my ($dlm, $re, $rpl, $flg) = ($1, $2, $3, $4 || 1 );
@@ -118,23 +116,25 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
     elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; wrt $f, ($no_adr ? 1..$#b : @i) }
     if    ($cmd =~ /q/)  { if ($mod) {$mod = 0; die "Warning: buffer modifed\n" } else { exit }  }
     $cmd !~ /[efrw]/ and $sfx =~ s/([pn]|l[xod]?)$// and $cmd .= $1;
-    if ($cmd =~ /[cdynps]|^$/ and grep /^0$/, @i)  { die $ERR_ADR }
-    if ($cmd =~ /[u=iadyxpnl]/ and $sfx)          { die $ERR_SFX }
-    if ($cmd =~ /[t]/) { die $ERR_SFX unless $sfx && $sfx =~ /^($ADR?)($OFS?)?$/;
-			 $sfx  = $1 ne '' ? getl $1 : $pos;
-			 $sfx += $3 ne '' ? sum $3 : 0;
-			 die $ERR_ADR unless valid $sfx }
+    if ($cmd =~ /[cdnpsy]|^$/ and grep /^0$/, @i)  { die $ERR_ADR }
+    if ($cmd =~ /[=acdilnpuxy]/ and $sfx)          { die $ERR_SFX }
+    if ($cmd =~ /[tm]/) { die $ERR_SFX unless $sfx ne '' and $sfx =~ /^($ADR?)($OFS?)?$/;
+			  $sfx  = $1 ne '' ? getl $1 : $pos;
+			  $sfx += $3 ne '' ? sum $3 : 0;
+			  die $ERR_ADR unless valid $sfx }
     if ($cmd =~ /P/) { $p = $p eq '' ? $P : '' }
     if ($cmd =~ /N/) { $pn = $pn eq '' ? $pos : ''; }
     if ($cmd =~ /u/) { undo }
     elsif ($cmd =~ /X/) { eval "$sfx;" }
     elsif ($cmd =~ /a/) { my @t = gettxt; insert @t if @t }
     elsif ($cmd =~ /i/) { my @t = gettxt; do { --$pos if $pos>0; insert @t } if @t }
-    elsif ($cmd =~ /c/) { my @t = gettxt; do { del @i; insert @t } if @t }
+    elsif ($cmd =~ /c/) { my @t = gettxt; do { del @i; --$pos; insert @t } if @t }
     elsif ($cmd =~ /d/) { del @i }
     elsif ($cmd =~ /y/) { @x = copy @b[@i] }
     elsif ($cmd =~ /x/) { insert @x }
-    elsif ($cmd =~ /t/) { $pos = $sfx; @x = copy @b[@i]; insert @x }
+    elsif ($cmd =~ /t/) { $pos = $sfx; @x = copy @b[@i]; insert @x; }
+    elsif ($cmd =~ /m/) { die $ERR_ADR if grep /^$sfx$/, @i; del @i;  $pos = $sfx;
+			  $_<$pos and --$pos for @i; insert @x; }
     elsif ($cmd =~ /j/) { my %o; %o = ( %o, %{ $b[$_] } ) for @i;
 			  $o{_} = join "$sfx", map $b[$_]{_}, @i;
 			  del @i; $pos-- if $pos>1; insert \%o }

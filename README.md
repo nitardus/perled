@@ -104,7 +104,7 @@ Correcting errors is just as easy
 	
 but surely, you want that also to be a easy to use function
 
-	push @b, 'sub subst { my ($i, $re) = @_; eval "\$b[$i] =~ s$re" }
+	push @b, 'sub subst { my ($i, $re) = @_; eval "\$b[$i] =~ s$re" }'
 	
 you now can change a line by calling
  

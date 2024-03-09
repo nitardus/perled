@@ -2,7 +2,7 @@
 use v5.14; use strict; use warnings; use utf8;
 our $z = 22; # Terminal height for the z command
 
-our (@b, @u, @x, $p, $P, $mod); our $pos = 0; our $regex  = ''; our $pn = '';
+our (@b, @u, @x, $p, $P, $mod, $nl); our $pos = 0; our $regex  = ''; our $pn = '';
 our $ADR = qr#\d+|\$|\.|'[A-z]|([/?]).*?(?:\1I?|$)#;
 our $OFS = qr#(?:[+-]\d*)+#;
 our $GLB = qr#([GgVv])([/?])(.*?)($|\2I?)#;
@@ -57,14 +57,14 @@ sub size   { use bytes; return length $_[0] }
 sub name   { my $f = shift; return ($f =~ s/^\s+(?=\S)//) ? $f : $b[0] }
 sub load   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "-|" : "<"; my $s = 0;
 	     if (open my $h,$m,$f) {
-	       while (<$h>) { $s+=size($_); chomp; push @_, {_=>$_} }
-	       say $s; close $h; return @_ }
+	       while (<$h>) { $s+=size($_); $nl = chomp; push @_, {_=>$_} }
+	       warn "Final newline missing\n" if -T $f && !$nl; say $s; close $h; return @_ }
 	     die "$f: $!\n" }
 sub wrt   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
-	     if (open my $h,$m,$f) { my $out = join '', map { $b[$_]{_}."\n" } @_; $mod = 0;
-					  print { $h } $out; say size $out; close $h; return }
+	     if (open my $h,$m,$f) { my $out = join "\n", map $b[$_]{_}, @_; $out .= "\n"x$nl;
+				     $mod=0; print { $h } $out; say size $out; close $h; return }
 	     die "Cannot open $f for write: $!\n" }
-sub edit   { @b = ($_[0]); eval { push @b, load $b[0] } or warn $@; $pos = $#b }
+sub edit   { @b = ($_[0]); $nl=1; eval { push @b, load $b[0] } or warn $@; $pos = $#b }
 
 while ($_ = shift) { if (s/^-//) { $p   = /^p$/ ? '*' : /^P(.)$/ ? $1 : ''; /^pn/ and $pn = 0 }
 		     elsif (!@b) { edit $_ } }

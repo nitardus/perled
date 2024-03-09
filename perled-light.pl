@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 use v5.14; use strict; use warnings; use utf8;
-our (@b, @u, @x, $p); our $pos = 0; our $regex  = '';
+our (@b, @u, @x, $p, $nl); our $pos = 0; our $regex  = '';
 our $ADR = qr#\d+|\$|\.|([/?]).*?(?:\1|$)#;
 our $CMD = qr#[acdefijknpqQsuxXyz!]|w?[qQ]|[rw]!?#x;
 our $ERR_SFX = "Invalid command suffix\n";
@@ -31,15 +31,15 @@ sub size   { use bytes; return length $_[0] }
 sub name   { my $f = shift; return ($f =~ s/^\s+(?=\S)//) ? $f : $b[0] }
 sub load   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "-|" : "<"; my $s = 0;
 	     if (open my $h,$m,$f) {
-	       while (<$h>) { $s+=size($_); chomp; push @_, $_ }
-		 say $s; close $h; return @_ }
+	       while (<$h>) { $s+=size($_); $nl=chomp; push @_, $_ }
+	       warn "Final newline missing\n" if -T $f && !$nl; say $s; close $h; return @_ }
 	     die "$f: $!\n" }
 sub wrt    { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
 	     if (open my $h,$m,$f)
-	       { my $out = join "\n", @_; print { $h } $out; say size $out;
-		 close $h; return }
+	       { my $out = join "\n", map $b[$_], @_; $out .= "\n"x$nl; print { $h } $out;
+		 say size $out; close $h; return }
 	     die "Cannot open $f for write: $!\n" }
-sub edit   { @b = ($_[0]); eval { push @b, load $b[0] } or warn $@; $pos = $#b }
+sub edit   { @b = ($_[0]); $nl=1; eval { push @b, load $b[0] } or warn $@; $pos = $#b }
 
 while ($_ = shift) { if (!@b) { edit $_ } }
 unless (@b) { @b = ('', '') and $pos = $#b }

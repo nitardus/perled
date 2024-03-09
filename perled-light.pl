@@ -42,7 +42,7 @@ sub wrt    { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
 sub edit   { @b = ($_[0]); $nl=1; eval { push @b, load $b[0] } or warn $@; $pos = $#b }
 
 while ($_ = shift) { if (!@b) { edit $_ } }
-unless (@b) { @b = ('', '') and $pos = $#b }
+unless (@b) { @b = ('', '') and $nl=1 and $pos = $#b }
 @u = @b; print $p = $pos.':';
 while (<STDIN>) {
   chomp; eval {
@@ -71,7 +71,7 @@ while (<STDIN>) {
     elsif ($cmd =~ /r/)  { my $f = name $sfx or die $ERR_FLN; insert load $f }
     elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; wrt $f, ($no_adr ? 1..$#b : @i) }
     if    ($cmd =~ /q/)  { exit }
-    $cmd !~ /[efrw]/ and $sfx =~ s/([pn])$// and $cmd .= $1;
+    $cmd !~ /[efrw!]/ and $sfx =~ s/([pn])$// and $cmd .= $1;
     if ($cmd =~ /[cdnpsy]|^$/ and grep /^0$/, @i)  { die $ERR_ADR }
     if ($cmd =~ /[adinpuxy=]/ and $sfx)           { die $ERR_SFX }
     if ($cmd =~ /u/) { @_ = @b; @b = @u; @u = @_; $pos = $#b if $pos > $#b }

@@ -63,13 +63,13 @@ sub load   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "-|" : "<"; my $s = 0;
 	     die "$f: $!\n" }
 sub wrt   { my $f = shift; my $m = ($f =~ s/^\s*!//) ? "|-" : ">";
 	     if (open my $h,$m,$f) { my $out = join "\n", map $b[$_]{_}, @_; $out .= "\n"x$nl;
-				     $mod=0; print { $h } $out; say size $out; close $h; return }
+				     $mod=0; print { $h } $out; say size $out; close $h; return size $out }
 	     die "Cannot open $f for write: $!\n" }
 sub edit   { @b = ($_[0]); $nl=1; eval { push @b, load $b[0] } or warn $@; $pos = $#b }
 
 while ($_ = shift) { if (s/^-//) { $p   = /^p$/ ? '*' : /^P(.)$/ ? $1 : ''; /^pn/ and $pn = 0 }
 		     elsif (!@b) { edit $_ } }
-unless (@b)        { @b = ('', { _ => '' }) and $pos = $#b }
+unless (@b)        { @b = ('', { _ => '' }) and $nl=1 and $pos = $#b }
 @u = @b; $P = $p = $p // ''; $pn = $pos unless $pn eq '';
 
 while ( defined ($_ = $T->readline("$pn$p")) ) {
@@ -98,8 +98,7 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
 
     save if $cmd =~ /[aicedkmrtx]/;
     if ($cmd =~ /k/) { die $ERR_ADR if $#i || !$i[0];
-		       die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//;
-		       setk $i[0], $1 }
+		       die $ERR_SFX unless $sfx =~ s/^([A-z])(?=[pnl]?$)//; setk $i[0], $1 }
     elsif ($cmd =~ /s/) {
       $sfx =~ s#(\S)(.*?)\1(.*?)(?:\z|\1([Ig\d]*)(?=[nlp]?\z))##s or die $ERR_SFX;
       my ($dlm, $re, $rpl, $flg) = ($1, $2, $3, $4 || 1 );
@@ -115,7 +114,7 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
     elsif ($cmd =~ /r/)  { my $f = name $sfx or die $ERR_FLN; insert load $f }
     elsif ($cmd =~ /w/)  { my $f = name $sfx or die $ERR_FLN; wrt $f, ($no_adr ? 1..$#b : @i) }
     if    ($cmd =~ /q/)  { if ($mod) {$mod = 0; die "Warning: buffer modifed\n" } else { exit }  }
-    $cmd !~ /[efrw]/ and $sfx =~ s/([pn]|l[xod]?)$// and $cmd .= $1;
+    $cmd !~ /[efrw!]/ and $sfx =~ s/([pn]|l[xod]?)$// and $cmd .= $1;
     if ($cmd =~ /[cdnpsy]|^$/ and grep /^0$/, @i)  { die $ERR_ADR }
     if ($cmd =~ /[=acdilnpuxy]/ and $sfx)          { die $ERR_SFX }
     if ($cmd =~ /[tm]/) { die $ERR_SFX unless $sfx ne '' and $sfx =~ /^($ADR?)($OFS?)?$/;
@@ -133,9 +132,9 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
     elsif ($cmd =~ /y/) { @x = copy @b[@i] }
     elsif ($cmd =~ /x/) { insert @x }
     elsif ($cmd =~ /t/) { $pos = $sfx; @x = copy @b[@i]; insert @x; }
-    elsif ($cmd =~ /m/) { die $ERR_ADR if grep /^$sfx$/, @i; del @i;  $pos = $sfx;
+    elsif ($cmd =~ /m/) { die $ERR_ADR if grep /^$sfx$/, @i; del @i; $pos = $sfx;
 			  $_<$pos and --$pos for @i; insert @x; }
-    elsif ($cmd =~ /j/) { my %o; %o = ( %o, %{ $b[$_] } ) for @i;
+    elsif ($cmd =~ /j/) { my %o; %o = ( %o, %{ $b[$_] } ) for @i; 
 			  $o{_} = join "$sfx", map $b[$_]{_}, @i;
 			  del @i; $pos-- if $pos>1; insert \%o }
     elsif ($cmd =~ /=/) { say $pos }

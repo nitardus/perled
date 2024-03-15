@@ -2,7 +2,7 @@
 use v5.14; use strict; use warnings; use utf8;
 our (@b, @u, @x, $p, $nl); our $pos = 0; our $regex  = '';
 our $ADR = qr#\d+|\$|\.|([/?]).*?(?:\1|$)#;
-our $CMD = qr#[acdefijknpqQsuxXyz!]|w?[qQ]|[rw]!?#x;
+our $CMD = qr#[acdefijknpqQsuxXy!]|w?[qQ]|[rw]!?#x;
 our $ERR_SFX = "Invalid command suffix\n";
 our $ERR_ADR = "Invalid adress!\n";
 our $ERR_FLN = "No current filename!\n";

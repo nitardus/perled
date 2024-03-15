@@ -139,9 +139,9 @@ while (<STDIN>) {
     elsif ($cmd =~ /=/) { say $pos }
     if ($cmd =~ /p/) { say $b[$_]{_} for @i }
     elsif ($cmd =~ /n/) { say "$_\t", $b[$_]{_} for @i }
-    elsif ($cmd =~ /z/) { $sfx =~ /\D/ and die $ERR_SFX; $z = $sfx||$z||22; $beg += $end;
-			  die $ERR_ADR if $beg>$#b; $end = $beg+$z; $end = $end<$#b ? $end : $#b;
-			  say $b[$_]{_} for $beg..$end; $pos = $end }
+    elsif ($cmd =~ /z/) { $sfx =~ /\D/ and die $ERR_SFX; $z = $sfx||$z; $beg = $end;
+			  die $ERR_ADR if $beg>$#b; $end = $beg+$z-1; $end = $end<$#b ? $end : $#b;
+			  say $b[$_]{_} for $beg..$end; $pos = $end<$#b ? $end + 1 : $#b }
     elsif ($cmd =~ /l([DOX]?)/) { say raw $b[$_]{_}, ($1 eq 'X'? $X : $1 eq 'D'? $D : $O) for @i }
     elsif (!$cmd) {$sfx && die "Unknown command\n"; say $b[$_]{_} for @i; $pos==$#b or $pos++}
   };  print STDERR "? $@" if $@; $pn = $pos unless $pn eq ''; print "$pn$p";

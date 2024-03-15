@@ -127,7 +127,7 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
     elsif ($cmd =~ /X/) { eval "$sfx;" }
     elsif ($cmd =~ /a/) { my @t = gettxt; insert @t if @t }
     elsif ($cmd =~ /i/) { my @t = gettxt; do { --$pos if $pos>0; insert @t } if @t }
-    elsif ($cmd =~ /c/) { my @t = gettxt; do { del @i; --$pos; insert @t } if @t }
+    elsif ($cmd =~ /c/) { my @t = gettxt; do { del @i; --$pos if $pos>0; insert @t } if @t }
     elsif ($cmd =~ /d/) { del @i }
     elsif ($cmd =~ /y/) { @x = copy @b[@i] }
     elsif ($cmd =~ /x/) { insert @x }

@@ -85,6 +85,6 @@ while (<STDIN>) {
     elsif ($cmd =~ /j/) { my $ins = join "$sfx", @b[@i]; del @i; $pos-- if $pos>1; insert $ins }
     if ($cmd =~ /p/)    { say for @b[@i] }
     elsif ($cmd =~ /n/) { say "$_\t$b[$_]" for @i }
-    elsif (!$cmd) {$sfx && die "Unknown command\n"; say for @b[@i]; $pos==$#b or $pos++}
+    elsif (!$cmd) {$sfx && die "Unknown command\n"; say for @b[@i]; $pos==$#b or $pos++ if $no_adr}
   };  print STDERR "? $@" if $@; print $p = $pos.':';
 }

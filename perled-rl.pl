@@ -144,6 +144,7 @@ while ( defined ($_ = $T->readline("$pn$p")) ) {
 			  die $ERR_ADR if $beg>$#b; $end = $beg+$z-1; $end = $end<$#b ? $end : $#b;
 			  say $b[$_]{_} for $beg..$end; $pos = $end<$#b ? $end + 1 : $#b }
     elsif ($cmd =~ /l([DOX]?)/) { say raw $b[$_]{_}, ($1 eq 'X'? $X : $1 eq 'D'? $D : $O) for @i }
-    elsif (!$cmd) {$sfx && die "Unknown command\n"; say $b[$_]{_} for @i; $pos==$#b or $pos++}
+    elsif (!$cmd) {$sfx && die "Unknown command\n"; say $b[$_]{_} for @i;
+		   $pos==$#b or $pos++ if $no_adr and not $glob }
   };  print STDERR "? $@" if $@; $pn = $pos unless $pn eq '';
 }
